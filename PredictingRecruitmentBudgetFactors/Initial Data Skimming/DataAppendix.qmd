@@ -1,0 +1,126 @@
+---
+title: "Data Appendix"
+author: "Kiersten Hamby,Breanna Ranglall,Krutika Tekwani"
+format: pdf
+editor: visual
+execute: 
+  echo: true
+  self-contained: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(skimr)
+```
+
+## Data Appendix
+
+## Group Members
+
+Kiersten Hamby, Breanna Ranglall, Krutika Tekwani
+
+## Loading Data In
+
+```{r}
+Athletics=read.csv("~/OneDrive - University of St. Thomas/STAT320/GroupE2AthleticsData/GroupE2-AthleticsSpendingData.csv")
+```
+
+## Skim
+
+```{r}
+Athletics%>%
+  select(institution_name,state_cd,classification_name,EFMaleCount,EFFemaleCount,EFTotalCount,sector_name,STUDENTAID_MEN,STUDENTAID_WOMEN,STUDENTAID_TOTAL,HDCOACH_SALARY_MEN,HDCOACH_SALARY_WOMEN,RECRUITEXP_MEN,RECRUITEXP_WOMEN,RECRUITEXP_TOTAL,NUM_HDCOACH_MEN,NUM_HDCOACH_WOMEN)%>%
+  skim()
+```
+
+## Variable Names/Types
+
+institution_name
+
+state_cd
+
+classification_name
+
+EFMaleCount
+
+EFFemaleCount
+
+EFTotalCount
+
+sector_name
+
+STUDENTAID_MEN: 13 missing values
+
+STUDENTAID_WOMEN: 31 missing values
+
+STUDENTAID_TOTAL
+
+HDCOACH_SALARY_MEN: 14 missing values
+
+HDCOACH_SALARY_WOMEN: 32 missing values
+
+RECRUITEXP_MEN: 13 missing values
+
+RECRUITEXP_WOMEN: 31 missing values
+
+RECRUITEXP_TOTAL
+
+NUM_HDCOACH_MEN: 15 missing values
+
+NUM_HDCOACH_WOMEN: 33 missing values
+
+The variable names are readable and clear. One point of confusion is what 'EF' means in the count of students. Sector name refers to the public/private status of a school. It is convenient that the data already specifies men's, women's, and totals for the variables. Some variables include underscores in the name.
+
+All variables except those discussed below, Categorical, are numeric variables which is what they should be.
+
+## Category Names
+
+institution_name
+
+state_cd
+
+classification_name
+
+sector_name
+
+All non-binary categorical variables. Clearly named, though they do include underscores. These are all classified as character variables which is what we would expect.
+
+## Max and Min for Variables
+
+EFMaleCount: Max=34,767, Min=1
+
+EFFemaleCount: Max=29,793, Min=4
+
+EFTotalCount: Max=64,560, Min=62
+
+STUDENTAID_MEN: Max=15,953,475, Min=0
+
+STUDENTAID_WOMEN: Max=14,979,930, Min=0
+
+STUDENTAID_TOTAL: Max=28,909,727, Min=0
+
+HDCOACH_SALARY_MEN: Max=2,387,189, Min=0
+
+HDCOACH_SALARY_WOMEN: Max=601,582, Min=0
+
+RECRUITEXP_MEN: Max=5,331,795, Min=0
+
+RECRUITEXP_WOMEN: Max=962,902, Min=0
+
+RECRUITEXP_TOTAL: Max=6,294,697, Min=0
+
+NUM_HDCOACH_MEN: Max=106, Min=1
+
+NUM_HDCOACH_WOMEN: Max=101, Min=2
+
+The only point of concern is that so many variables have a minimum of 0 and we would not expect to see a university with no recruiting expenses, for example. We will look into what is affecting this, potentially the sector of the school.
+
+## Data Wrangling, Data Cleaning
+
+-Only have the parent school if there are multiple campuses to maintain independence
+
+-Deleting unused variables as there are more than 4,000 variables
+
+-Look into schools that have 0 as a minimum for expenses/student aid/etc. to see if we can find a cause or need to remove these observations from our data.

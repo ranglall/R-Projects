@@ -1,0 +1,252 @@
+---
+title: "GroupEAthleticsProject"
+author: "Kiersten Hamby,Breanna Ranglall,Krutika Tekwani"
+format: pdf
+editor: visual
+execute: 
+  echo: true
+  self-contained: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## What Factors Influence Recruitment Spending at Post-Secondary Education Institutions?
+
+```{r}
+#| message: false
+#| warning: false 
+library(tidyverse)
+library(skimr)
+library(Stat2Data)
+library(leaps)
+library(dplyr)
+library(car)
+```
+
+## Abstract
+
+Our goal was to build a multiple linear regression model using data collected by the U.S. Department of Education Office of Post secondary Education to predict the total recruitment expenses of US Post Secondary Education Institutions using data the universities provided. Using forward, backward, and best subsets for variable selection, our model used Total Student Aid, Head Coach Salary Men, Total Student Count, and Number of Head Coach Women as predictors. The model variables Total Student Aid and Head Coach Salary Men were log transformed for the purpose of this model. While the model proved to be statistically significant, it cannot be soundly used for inference purposes as the independence condition was violated due to relationships between universities in the data set. Ultimately, the model explains 79.72% of the variability in total recruiting expenses.
+
+## Introduction
+
+The U.S. Department of Education Office of Postsecondary Education collects this data from all US institutions that have inter college athletic programs annually. This data is important because it helps the public, prospective students, and athletes being recruited aware of the school's commitment to equitable athletic opportunity.
+
+## Data Overview
+
+The general topic we want to study is athletic recruitment costs of different U.S. post-secondary educational institutions.The data set is separated by male, female, and coed if the school has coed teams.
+
+This data set includes information regarding athletic participation, athletic student aid, staffing, revenues, and expenses, by men's, women's, and coed varsity teams. It was collected by the U.S. Department of Education Office of Postsecondary Education.
+
+While this data set included more than 4,000 variables, we hand selected 15 variables to be considered for inclusion in the model. These variables were institution name (character), state CD (character), EF Total Count (numeric) representing the number of students at the university, sector name (character), Student Aid Total (numeric) representing the sum of the financial student aid distributed, Head Coach Salary Men (numeric) representing the average amount of men's sport head coaching salary, Head Coach Salary Women (numeric) representing the average amount of women's sport head coaching salaries, Recruiting expense total (numeric) representing the sum of expenditures related to recruitment for both men's and women's sports, number of head coaches women's sport coaches (numeric), and number of head coaches women's sport coaches (numeric).
+
+Our goal is to find the best model the best model to predict recruitment expenses of post secondary institutions.
+
+## Loading Data In
+
+```{r}
+Athletics=read.csv("~/OneDrive - University of St. Thomas/STAT320/GroupE2AthleticsData/GroupE2-AthleticsSpendingData.csv")
+
+Athletics <- Athletics %>%
+  select(institution_name, state_cd,classification_name,EFTotalCount,sector_name,
+         STUDENTAID_TOTAL,HDCOACH_SALARY_MEN,HDCOACH_SALARY_WOMEN,
+         RECRUITEXP_TOTAL,NUM_HDCOACH_MEN,NUM_HDCOACH_WOMEN)
+```
+
+We selected these variables because we wanted to create a multiple linear regression model and therefore wanted to include primarily quantitative variables. We kept Institution Name, State CD, and Classification Name for identification purposes throughout the data wrangling process.
+
+## First Model Attempt
+
+```{r}
+oldbest <- regsubsets(RECRUITEXP_TOTAL ~ EFTotalCount+STUDENTAID_TOTAL+
+                        HDCOACH_SALARY_MEN+HDCOACH_SALARY_WOMEN+
+                        NUM_HDCOACH_MEN+NUM_HDCOACH_WOMEN, 
+                      data = Athletics, nbest = 1, method = "exhaustive", really.big = T)
+with(summary(oldbest), data.frame(rsq, adjr2, cp, rss, outmat))
+```
+
+```{r}
+OldAthleticsRecruiting<-lm(RECRUITEXP_TOTAL ~ EFTotalCount+STUDENTAID_TOTAL+
+                             HDCOACH_SALARY_MEN+HDCOACH_SALARY_WOMEN+
+                             NUM_HDCOACH_MEN+NUM_HDCOACH_WOMEN, data = Athletics)
+```
+
+```{r}
+summary(OldAthleticsRecruiting)
+```
+
+```{r}
+plot(OldAthleticsRecruiting,which = 1)
+plot(OldAthleticsRecruiting, which=2)
+```
+
+As shown above, our original attempt to create a model violated the conditions of normality, equality of variance, and independence. Due to this, we had to adjust the model by cleaning the data and transforming certain variables that were resulting in these condition violations.
+
+## Data Cleaning
+
+```{r}
+Athletics[Athletics==0] <- NA
+
+Athletics <- Athletics %>%
+  na.omit(Athletics)
+
+```
+
+We omitted rows that had missing variables and values of 0 so we could perform transformations on the variables to be able to create and appropriate model. This reduced our data set from 2027 observations to 1162, a decrease of 865 observations. This will be important to keep in mind when determining the usefulness of the model.
+
+## Data Transformations
+
+```{r}
+ggplot(Athletics)+geom_density(aes(x=RECRUITEXP_TOTAL))
+ggplot(Athletics)+geom_density(aes(x=STUDENTAID_TOTAL))
+ggplot(Athletics)+geom_density(aes(x=HDCOACH_SALARY_MEN))
+ggplot(Athletics)+geom_density(aes(x=HDCOACH_SALARY_WOMEN))
+```
+
+We used Tukey's Bulging Rule to determine that each of these variables should be log-transformed based on the skew of the graphs.
+
+```{r}
+Athletics <- Athletics %>%
+  mutate(transformed_RecruitExpTotal = log(RECRUITEXP_TOTAL))
+
+Athletics <- Athletics %>%
+  mutate(transformed_StudentAidTotal = log(STUDENTAID_TOTAL))
+
+Athletics <- Athletics %>%
+  mutate(transformed_HDCoachSalaryMen = log(HDCOACH_SALARY_MEN))
+
+Athletics <- Athletics %>%
+  mutate(transformed_HDCoachSalaryWomen = log(HDCOACH_SALARY_WOMEN))
+
+
+ggplot(Athletics)+geom_density(aes(x=transformed_RecruitExpTotal))
+
+ggplot(Athletics)+geom_density(aes(x=transformed_HDCoachSalaryMen))
+
+ggplot(Athletics)+geom_density(aes(x=transformed_StudentAidTotal))
+
+ggplot(Athletics)+geom_density(aes(x=transformed_HDCoachSalaryWomen))
+                               
+```
+
+After transforming the variables and rechecking the skew, the log transformation improved each of the variables. The student aid variable is now skewed to the left but it is still improved from the original variable.
+
+## Model Selection
+
+```{r}
+backward <- regsubsets(transformed_RecruitExpTotal ~ EFTotalCount+
+                         transformed_StudentAidTotal+
+                         transformed_HDCoachSalaryMen+transformed_HDCoachSalaryWomen+
+                         NUM_HDCOACH_MEN+NUM_HDCOACH_WOMEN, data = Athletics, 
+                       nbest = 1, nvmax = 9, 
+                       method = "backward")
+summary(backward)
+with(summary(backward), data.frame(cp, outmat))
+```
+
+```{r}
+best <- regsubsets(transformed_RecruitExpTotal ~ EFTotalCount+
+                     transformed_StudentAidTotal+
+                     transformed_HDCoachSalaryMen+
+                     transformed_HDCoachSalaryWomen+
+                     NUM_HDCOACH_MEN+NUM_HDCOACH_WOMEN, data = Athletics, 
+                   nbest = 1, method = "exhaustive", really.big = T)
+
+```
+
+```{r}
+forward <- regsubsets(transformed_RecruitExpTotal ~ EFTotalCount+
+                        transformed_StudentAidTotal+
+                        transformed_HDCoachSalaryMen+transformed_HDCoachSalaryWomen+
+                        NUM_HDCOACH_MEN+NUM_HDCOACH_WOMEN, data = Athletics, 
+                      nbest = 1, 
+                      nvmax = 8, method = "forward")
+
+```
+
+All selection methods lead us to choose a model based on 4 variables, Transformed Student Aid Total, Transformed Head Coach Salary Men, Total Student Count, and Number of Head Coaches Women to predict Transformed Recruiting Expense Total because of the low CP value.
+
+```{r}
+AthleticsRecruiting<-lm(transformed_RecruitExpTotal~transformed_StudentAidTotal+
+                          transformed_HDCoachSalaryMen+EFTotalCount+NUM_HDCOACH_WOMEN,
+                        data=Athletics)
+```
+
+## Summary Output
+
+```{r}
+summary(AthleticsRecruiting)
+```
+
+$$
+\hat{TotalRecruitingExpense}=-5.736 \ + \ 0.4287*log(StudentAidTotal) \ + \ 0.898*log(HDCoachSalaryMen) 
+$$
+
+$$
+\ + \ 0.00001063*EFTotalCount \ + \  0.0467*NumHDCoachWomen
+$$
+
+All the variables are significant with p-values of less than 0.05.
+
+The model has a p-value of almost 0 and therefore we have evidence that it is statistically significant.
+
+## Condition Check
+
+**QQ Plot to Check Normality**
+
+```{r}
+plot(AthleticsRecruiting,which = 2)
+```
+
+The normality condition is not completely satisfied as the QQ plot shows points deviating from the line on both ends creating an s-shape. It is however a significant improvement from the model with untransformed variables and is not so bad that we would not continue forward with this model.
+
+**Residual vs Fitted Plot for Linearity and Equality of Variance**
+
+```{r}
+plot(AthleticsRecruiting,which=1)
+```
+
+The linearity condition looks pretty good as there is no obvious curvature to the line shown in the residuals vs fitted plot.
+
+The normality condition is not completely satisfied as the bands of residuals are not uniform throughout the graph, however, this is also a significant improvement from the untransformed model.
+
+**Independence**
+
+Because we were unable to filter out campuses that are related we weren't able to maintain the independence condition, however, this is something we were aware of and should be kept in mind when trying to draw any conclusions from the model.
+
+**Outliers**
+
+```{r}
+plot(AthleticsRecruiting, which = 5)
+```
+
+There appears to be one outlier based on the Residuals vs Leverage plot. Due to the low number of outliers and the high number of observations, we chose to move forward with the model without removing the outlier.
+
+When researching further, the outlier is The Pennsylvania State University and appears to have an abnormally large Student Aid Total and Total Number of Students.
+
+## Multicollinearity Test
+
+```{r}
+vif(AthleticsRecruiting)
+```
+
+None of the VIF values are greater than 5 so multicollinearity is not concerning at this point.
+
+## Coefficient Interpretation
+
+For a 1% increase in Total Student Aid, holding all other variables constant, we expect Total Recruiting Expenses to increase by .4287%.
+
+For a 1% increase in Head Coach Salary Men, holding all other variables constant, we expect Total Recruiting Expenses to increase by .898%
+
+For a 1-student increase in EF Total Count, holding all other variables constant, we expect Total Recruiting Expense to increase by 0.00001063%.
+
+For a 1-person increase in Number of Head Coaches Women, holding all other variables constant, we expect Total Recruiting Expenses to increase by 0.0467%.
+
+## Conclusion
+
+With this project we hoped to make a multiple linear regression model that could predict U.S. Post Secondary Education Institution's total recruitment expenses using various explanatory variables collected by the U.S. Department of Education Office of Post secondary Education.
+
+We rejected the null hypothesis that there was no relationship between total recruiting expenses and the explanatory variables used in this model. That being said, our significant p-value suggests there is evidence to suggest that there is a relationship between Total Student Aid (transformed), Total Student Count, Head Coach Salary Men (transformed), and Number of Head Coaches Women and Total Recruiting Expenses (transformed).
+
+The model is faced with limitations in that the data collected is from US schools during the 2021-2022 academic year and therefore any conclusions or predictions being made outside of those characteristics are not sound. Further with the dropping of 865 observations due to missing values, we have to be aware that there is a possibility of the model missing statistically significant data that would change the model if included.
+
+The next steps we identified are to gather sufficient data from all schools so broader conclusions can be drawn from the model. Further, determining a way to filter out related schools would help satisfy the independence condition so that the model could be used to draw inferences. We were also interested into diving more into the data associated with gender to identify potential inequities.
